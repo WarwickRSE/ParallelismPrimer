@@ -1,0 +1,29 @@
+# OpenMP Examples showing the basics
+
+## thread_and_single.f90
+
+This shows the behaviour of the OpenMP runtime. It shows that the OpenMP directives split the code into bits where multiple threads exist and bits where single threads exist and show the very basics of how to move between the two
+
+## broken_counter.f90
+
+An attempt to simply count up the number of loop iterations that are taken by all of the OpenMP threads. It doesn't match the expected number. This is because if two threads try to update the counter at the same time they will get in each others way. Updating a counter consists of three operations - taking the existing value, adding 1 to it and putting the modified value back in place. If two threads start this operation at the same time then they will both grab the same initial value of the counter, independently add one to it and each will put back the initial value incremented by 1. This means that instead of the net effect being to add 2 to the counter only 1 will be added so the counter will almost always be too low. This collision doesn't happen every time so the counter is not simply the expected value divided by the number of threads, but the final number will always be between this value and the true number of iterations.  There are also various solutions presented below
+
+## counter_reduce.f90
+
+This fixes the broken counter by using the OpenMP Reduction operators. Because in this simple problem we're just trying to count the number of iterations performed we could count the number of iterations in each thread separately and then just add those together. While you could do this directly OpenMP has built in operators called reduction operators to do this
+
+## active_counter_reduction.f90
+
+This is another way of fixing the broken counter by accumulating the count on each thread into a separate element of an array and then summing the array at the end. This works as expected but has several downsides. It requires you to use the OpenMP runtime commands which means that your code can no longer be compiled by a compiler that doesn't support OpenMP. The final addition of the counter variables is also performed in serial which might be unhelpful for some problems
+
+## counter_critical_section.f90
+
+This fixes the counter by using a critical section. Critical sections are bits of code that all of the threads will go through but only one can be in at a time. If a thread reaches the critical section while another thread is already in it then it will wait until the thread in the critical section leaves the critical section. Because of this every thread can then safely work with the counter variable because . The problem with critical sections is that they cause the threads to have to queue up to enter them. They are the most general way of allowing threads access to shared resources but limit scaling if your code has to spend a lot of time waiting to enter critical sections.
+
+## counter_atomic.f90
+
+This fixes the critical section using atomic operations. Atomic operations are operations that are guaranteed to be uninterruptable while they are in operation. This means that the update of the counter variable can't be interrupted by another thread so the problem is resolved. The advantage of atomic operations over critical sections is that atomic operations are much lighter weight - they only lock individual memory locations as they are being updated and they take advantage of specific hardware to perform atomic operations (where this is possible). The disadvantage of atomic updates is that only certain operations can be performed atomically. These are mainly reading, writing or updating variables.
+
+## schedule_demo.f90
+
+This demo code records what elements of an array were acted on by which threads as a loop runs. You should edit it to look at the effect of different scheduling and chunk size operations
